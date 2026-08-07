@@ -2,3 +2,6 @@
 include:
   - board: nice_nano//zmk
     shield: wp
+
+  - board: nice_nano//zmk
+    shield: settings_reset
