@@ -1,6 +1,23 @@
 /*
- * WP
- * 21-key left Corne
+ * WP / Corne Wireless - Left Half Only
+ * nice!nano v2
+ * Typeractive 6-column left PCB
+ *
+ * Bluetooth / Layout behavior:
+ *
+ * PLAY:
+ *   Tap BT     -> Bluetooth Profile 2 + Work layout
+ *   Hold 4 sec -> Clear current BT profile for re-pairing
+ *
+ * WORK:
+ *   Tap BT     -> Bluetooth Profile 1 + Play layout
+ *   Hold 4 sec -> Clear current BT profile for re-pairing
+ *
+ * Layers:
+ *
+ * Layer 0 = Bluetooth Profile 1 - Play
+ * Layer 1 = Bluetooth Profile 2 - Work
+ * Layer 2 = Work Layer 2
  */
 
 #include <behaviors.dtsi>
@@ -8,111 +25,234 @@
 #include <dt-bindings/zmk/bt.h>
 
 / {
+    macros {
+
+        /*
+         * Hold action:
+         *
+         * Clear bond information for the currently
+         * selected Bluetooth profile.
+         *
+         * Once cleared, ZMK will advertise that profile
+         * so it can be paired again.
+         */
+        bt_pairing_macro: bt_pairing_macro {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+
+            bindings = <
+                &bt BT_CLR
+            >;
+        };
+
+
+        /*
+         * PLAY -> WORK
+         *
+         * Explicitly select BT Profile 2
+         * and activate Work layer.
+         *
+         * ZMK BT profiles are zero-indexed:
+         *
+         * Profile 1 = BT_SEL 0
+         * Profile 2 = BT_SEL 1
+         */
+        play_to_work_macro: play_to_work_macro {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+
+            bindings = <
+                &bt BT_SEL 1
+                &to 1
+            >;
+        };
+
+
+        /*
+         * WORK -> PLAY
+         *
+         * Explicitly select BT Profile 1
+         * and return to Play/base layer.
+         */
+        work_to_play_macro: work_to_play_macro {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+
+            bindings = <
+                &bt BT_SEL 0
+                &to 0
+            >;
+        };
+    };
+
+
+    behaviors {
+
+        /*
+         * BT key while on PLAY
+         *
+         * TAP:
+         *   Profile 2 + Work
+         *
+         * HOLD 4 seconds:
+         *   Clear current Bluetooth profile
+         */
+        bt_play_switch: bt_play_switch {
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+
+            tapping-term-ms = <4000>;
+            flavor = "tap-preferred";
+
+            bindings = <
+                &bt_pairing_macro
+                &play_to_work_macro
+            >;
+        };
+
+
+        /*
+         * BT key while on WORK
+         *
+         * TAP:
+         *   Profile 1 + Play
+         *
+         * HOLD 4 seconds:
+         *   Clear current Bluetooth profile
+         */
+        bt_work_switch: bt_work_switch {
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+
+            tapping-term-ms = <4000>;
+            flavor = "tap-preferred";
+
+            bindings = <
+                &bt_pairing_macro
+                &work_to_play_macro
+            >;
+        };
+    };
+
+
     keymap {
         compatible = "zmk,keymap";
 
 
-        /*
-         * BASE
-         *
-         * ┌──────┬───┬───┬───┬───┬───┐
-         * │ TAB  │ Q │ W │ E │ R │ T │
-         * ├──────┼───┼───┼───┼───┼───┤
-         * │ CTRL │ A │ S │ D │ F │ G │
-         * ├──────┼───┼───┼───┼───┼───┤
-         * │SHIFT │ Z │ X │ C │ V │ B │
-         * └──────┴───┴───┴───┴───┴───┘
-         *
-         *             LOWER SPACE RAISE
-         */
+        // =========================================================
+        // LAYER 0
+        //
+        // Bluetooth Profile 1
+        // PLAY
+        //
+        // ┌──────┬─────┬───┬───┬───┬───┐
+        // │  BT  │ TAB │ Q │ W │ E │ R │
+        // ├──────┼─────┼───┼───┼───┼───┤
+        // │ MUTE │CAPS │ A │ S │ D │ F │
+        // ├──────┼─────┼───┼───┼───┼───┤
+        // │      │SHFT │ Z │ X │ C │   │
+        // └──────┴─────┴───┴───┴───┴───┘
+        //
+        //              ┌───┬───┬───────┐
+        //              │ 1 │ 2 │ SPACE │
+        //              └───┴───┴───────┘
+        //
+        // =========================================================
 
-        default_layer {
+        profile_1_layer {
+            display-name = "Play";
+
             bindings = <
-                &kp TAB     &kp Q     &kp W     &kp E     &kp R     &kp T
-                &kp LCTRL   &kp A     &kp S     &kp D     &kp F     &kp G
-                &kp LSHFT   &kp Z     &kp X     &kp C     &kp V     &kp B
+                &bt_play_switch 0 0   &kp TAB     &kp Q   &kp W   &kp E   &kp R
 
-                            &mo 1      &kp SPACE &mo 2
+                &kp C_MUTE            &kp CAPS    &kp A   &kp S   &kp D   &kp F
+
+                &none                 &kp LSHFT   &kp Z   &kp X   &kp C   &none
+
+                                      &kp N1      &kp N2  &kp SPACE
             >;
         };
 
 
-        /*
-         * LOWER
-         *
-         * TAB     1    2    3    4    5
-         * BTCLR  BT1  BT2  BT3  BT4  BT5
-         * SHIFT   -    -    -    -    -
-         *
-         *             LOWER SPACE RAISE
-         */
+        // =========================================================
+        // LAYER 1
+        //
+        // Bluetooth Profile 2
+        // WORK
+        //
+        // ┌──────┬───────┬────────┬──────┬───────┬──────────────┐
+        // │  BT  │       │ DELETE │ HOME │  END  │              │
+        // ├──────┼───────┼────────┼──────┼───────┼──────────────┤
+        // │ MUTE │       │  BSPC  │ COPY │ PASTE │ SPECIAL PASTE│
+        // ├──────┼───────┼────────┼──────┼───────┼──────────────┤
+        // │      │       │  CUT   │ SELA │       │              │
+        // └──────┴───────┴────────┴──────┴───────┴──────────────┘
+        //
+        //                   ┌──────┬───────┬────┐
+        //                   │ NONE │ SPACE │ L2 │
+        //                   └──────┴───────┴────┘
+        //
+        // Copy          = Ctrl+C
+        // Paste         = Ctrl+V
+        // Special Paste = Ctrl+Shift+V
+        // Cut           = Ctrl+X
+        // Select All    = Ctrl+A
+        //
+        // =========================================================
 
-        lower_layer {
+        profile_2_default_layer {
+            display-name = "Work";
+
             bindings = <
-                &kp TAB
-                &kp N1
-                &kp N2
-                &kp N3
-                &kp N4
-                &kp N5
+                &bt_work_switch 0 0   &none       &kp DEL        &kp HOME      &kp END        &none
 
-                &bt BT_CLR
-                &bt BT_SEL 0
-                &bt BT_SEL 1
-                &bt BT_SEL 2
-                &bt BT_SEL 3
-                &bt BT_SEL 4
+                &kp C_MUTE            &none       &kp BSPC       &kp LC(C)     &kp LC(V)      &kp LC(LS(V))
 
-                &kp LSHFT
-                &trans
-                &trans
-                &trans
-                &trans
-                &trans
+                &none                 &none       &kp LC(X)      &kp LC(A)     &none          &none
 
-                &trans
-                &trans
-                &trans
+                                      &none        &kp SPACE      &mo 2
             >;
         };
 
 
-        /*
-         * RAISE
-         *
-         * TAB    !    @    #    $    %
-         * CTRL   -    -    -    -    -
-         * SHIFT  -    -    -    -    -
-         *
-         *             LOWER SPACE RAISE
-         */
+        // =========================================================
+        // LAYER 2
+        //
+        // WORK L2
+        //
+        // Hold the bottom-right thumb key from Work.
+        //
+        // ┌──────┬───────┬───────┬──────┬────────┬───────┐
+        // │  BT  │       │       │ UNDO │  REDO  │       │
+        // ├──────┼───────┼───────┼──────┼────────┼───────┤
+        // │ MUTE │       │  TAB  │ BOLD │ ITALIC │       │
+        // ├──────┼───────┼───────┼──────┼────────┼───────┤
+        // │      │       │S+TAB  │      │ PRINT  │       │
+        // └──────┴───────┴───────┴──────┴────────┴───────┘
+        //
+        //                  ┌──────┬──────┬─────────┐
+        //                  │ NONE │ NONE │ THROUGH │
+        //                  └──────┴──────┴─────────┘
+        //
+        // Undo      = Ctrl+Z
+        // Redo      = Ctrl+Shift+Z
+        // Bold      = Ctrl+B
+        // Italic    = Ctrl+I
+        // Shift+Tab = Shift+Tab
+        //
+        // =========================================================
 
-        raise_layer {
+        profile_2_layer_2 {
+            display-name = "Work L2";
+
             bindings = <
-                &kp TAB
-                &kp EXCL
-                &kp AT
-                &kp HASH
-                &kp DLLR
-                &kp PRCNT
+                &trans       &none       &none          &kp LC(Z)       &kp LC(LS(Z))   &none
 
-                &kp LCTRL
-                &trans
-                &trans
-                &trans
-                &trans
-                &trans
+                &kp C_MUTE   &none       &kp TAB        &kp LC(B)       &kp LC(I)       &none
 
-                &kp LSHFT
-                &trans
-                &trans
-                &trans
-                &trans
-                &trans
+                &none        &none       &kp LS(TAB)    &none           &kp PSCRN       &none
 
-                &trans
-                &trans
-                &trans
+                             &none        &none          &trans
             >;
         };
     };
